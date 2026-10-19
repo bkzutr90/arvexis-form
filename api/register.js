@@ -1,4 +1,5 @@
 const { KEY, db, allTeams, body } = require('./_lib');
+const { notifyPending } = require('./_discord');
 const clean = s => String(s || '').trim().replace(/\s+/g, ' ').slice(0, 60);
 const norm = s => s.toLowerCase();
 const ROLES = ['Killer', 'Survivor', 'Killer + Survivor'];
@@ -42,24 +43,11 @@ module.exports = async (req, res) => {
     };
     await db(['HSET', KEY, rec.id, JSON.stringify(rec)]);
 
-    // Notifikasi Discord (kegagalan webhook tidak membatalkan pendaftaran)
-    if (process.env.DISCORD_WEBHOOK_URL) {
-      const line = (p, i) => `**${i}.** ${p.discord} • ${p.roblox} • ${p.role}`;
-      const embed = {
-        title: '📥 Pendaftaran Baru: ' + team,
-        color: 0xc0121f,
-        description: players.map((p, i) => line(p, i + 1)).join('\n'),
-        fields: [...(hasSub ? [{ name: 'Cadangan', value: line(sub, '⤷') }] : []), { name: 'Cek sebelum approve', value: 'Pastikan semua pemain sudah join server Discord Arvexis.' }],
-        footer: { text: 'Arvexis Community • Violence District Tournament' },
-        timestamp: rec.createdAt,
-      };
-      try {
-        await fetch(process.env.DISCORD_WEBHOOK_URL, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: 'Arvexis Registration', embeds: [embed] }),
-        });
-      } catch (e) { console.error('Discord webhook gagal', e); }
-    }
+    // Notifikasi Discord (kegagalan tidak membatalkan pendaftaran)
+    try {
+      const ref = await notifyPending(rec);
+      if (ref) { rec.msg = ref; await db(['HSET', KEY, rec.id, JSON.stringify(rec)]); }
+    } catch (e) { console.error('Notif pending gagal', e); }
     res.json({ ok: true });
   } catch (e) {
     console.error(e);

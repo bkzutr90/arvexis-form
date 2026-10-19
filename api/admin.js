@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { KEY, db, allTeams, body } = require('./_lib');
+const { setStatus } = require('./_discord');
 const hash = s => crypto.createHash('sha256').update(String(s)).digest();
 const same = (a, b) => crypto.timingSafeEqual(hash(a), hash(b));
 const token = () => crypto.createHash('sha256').update('arvexis:' + process.env.ADMIN_PASSWORD).digest('hex');
@@ -18,10 +19,8 @@ module.exports = async (req, res) => {
     if (b.action === 'list') return res.json({ teams: await allTeams() });
     if (b.action === 'status') {
       if (!['pending', 'approved', 'rejected'].includes(b.status)) return res.status(400).json({ error: 'Status tidak valid.' });
-      const raw = await db(['HGET', KEY, b.id]);
-      if (!raw) return res.status(404).json({ error: 'Data tidak ditemukan.' });
-      const rec = JSON.parse(raw); rec.status = b.status;
-      await db(['HSET', KEY, b.id, JSON.stringify(rec)]);
+      const rec = await setStatus(b.id, b.status, 'Web Admin');
+      if (!rec) return res.status(404).json({ error: 'Data tidak ditemukan.' });
       return res.json({ ok: true });
     }
     if (b.action === 'delete') { await db(['HDEL', KEY, b.id]); return res.json({ ok: true }); }
