@@ -1,12 +1,14 @@
 const { KEY, db, allTeams, body } = require('./_lib');
 const clean = s => String(s || '').trim().replace(/\s+/g, ' ').slice(0, 60);
 const norm = s => s.toLowerCase();
+const ROLES = ['Killer', 'Survivor', 'Killer + Survivor'];
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
     const b = body(req);
     if (b.website) return res.json({ ok: true }); // honeypot
+    if (b.agree !== true) return res.status(400).json({ error: 'Konfirmasi bahwa semua pemain sudah join Discord Arvexis.' });
     const team = clean(b.team);
     if (team.length < 2) return res.status(400).json({ error: 'Nama tim wajib diisi.' });
 
@@ -19,6 +21,8 @@ module.exports = async (req, res) => {
     const filled = Object.values(sub).filter(Boolean).length;
     if (filled > 0 && filled < 3) return res.status(400).json({ error: 'Data cadangan harus diisi lengkap atau dikosongkan.' });
     const hasSub = filled === 3;
+    if (players.some(p => !ROLES.includes(p.role)) || (hasSub && !ROLES.includes(sub.role)))
+      return res.status(400).json({ error: 'Role tidak valid.' });
 
     const list = hasSub ? [...players, sub] : players;
     const robloxNames = list.map(p => norm(p.roblox));
@@ -45,7 +49,7 @@ module.exports = async (req, res) => {
         title: '📥 Pendaftaran Baru: ' + team,
         color: 0xc0121f,
         description: players.map((p, i) => line(p, i + 1)).join('\n'),
-        fields: hasSub ? [{ name: 'Cadangan', value: line(sub, '⤷') }] : [],
+        fields: [...(hasSub ? [{ name: 'Cadangan', value: line(sub, '⤷') }] : []), { name: 'Cek sebelum approve', value: 'Pastikan semua pemain sudah join server Discord Arvexis.' }],
         footer: { text: 'Arvexis Community • Violence District Tournament' },
         timestamp: rec.createdAt,
       };
