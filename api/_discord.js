@@ -10,7 +10,21 @@ const TITLES = { pending: '📥 Pendaftaran Baru', approved: '✅ Tim Disetujui'
 const line = (p, i) => `**${i}.** ${p.discord} • ${p.roblox} • ${p.role}`;
 const statusText = r => r.status === 'pending' ? null : `${r.status === 'approved' ? '✅ Disetujui' : '❌ Ditolak'} oleh ${r.by || '-'}`;
 
+const FOOT = 'Arvexis Community • Violence District Tournament';
+const cell = v => String(v).replace(/`/g, "'");
+function table(list) {
+  const rows = list.map(p => [cell(p.discord), cell(p.roblox), cell(p.role)]);
+  const w = [13, 6, 17].map((m, i) => Math.max(m, ...rows.map(r => r[i].length)));
+  const row = r => `${r[0].padEnd(w[0])} | ${r[1].padEnd(w[1])} | ${r[2]}`;
+  return '```\n' + [row(['Discord', 'Roblox', 'Role']), '-'.repeat(w[0] + 1) + '|' + '-'.repeat(w[1] + 2) + '|' + '-'.repeat(w[2] + 3), ...rows.map(row)].join('\n') + '\n```';
+}
+
 function embed(rec) {
+  if (rec.status === 'approved') return {
+    title: '✅ PENDAFTARAN TIM DISETUJUI', color: COLORS.approved,
+    description: `**Nama Tim:** ${rec.team}\n\n**Anggota Tim**\n${table(rec.players)}` + (rec.sub ? `\n**Anggota Cadangan**\n${table([rec.sub])}` : '') + `\n**Status:** ✅ Disetujui\n**Diverifikasi oleh:** ${rec.by || '-'}`,
+    footer: { text: FOOT },
+  };
   const st = statusText(rec);
   return {
     title: `${TITLES[rec.status]}: ${rec.team}`, color: COLORS[rec.status],
@@ -82,7 +96,20 @@ async function findMember(name) {
 async function checkMembers(rec) {
   const all = [...rec.players, ...(rec.sub ? [rec.sub] : [])];
   const res = await Promise.all(all.map(p => findMember(p.discord).catch(e => { console.error(e.message); return undefined; })));
-  return all.map((p, i) => ({ p, member: res[i] }));
+  return all.map((p, i) => ({ p, member: res[i], sub: i >= rec.players.length }));
 }
 
-module.exports = { bot, embed, notifyPending, notifySuccess, syncMessage, setStatus, checkMembers };
+function blocked(rec, uid, who, missing) {
+  const invite = process.env.DISCORD_INVITE_URL ? `\n🔗 Link Discord: ${process.env.DISCORD_INVITE_URL}` : '';
+  const list = missing.map(m => `• ${m.p.discord}${m.sub ? ' (Cadangan)' : ''}`).join('\n');
+  return {
+    content: `<@${uid}>`, allowed_mentions: { users: [uid] },
+    embeds: [{
+      title: '⚠️ PENDAFTARAN TIM BELUM DISETUJUI', color: 0xf0b429,
+      description: `**Nama Tim:** ${rec.team}\n**Pendaftar:** <@${uid}>\n**Diperiksa oleh:** ${who}\n\nPendaftaran tim **${rec.team}** belum dapat disetujui karena beberapa anggota belum bergabung ke server Discord Arvexis Community.\n\n**Anggota yang belum bergabung:**\n${list}\n\nMohon minta anggota yang tercantum di atas untuk bergabung ke server Discord terlebih dahulu. Setelah semua anggota bergabung, silakan hubungi Staff untuk pemeriksaan ulang.${invite}`,
+      footer: { text: FOOT },
+    }],
+  };
+}
+
+module.exports = { blocked, bot, embed, notifyPending, notifySuccess, syncMessage, setStatus, checkMembers };
