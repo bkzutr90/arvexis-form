@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin | Arvexis Tournament</title><meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css"></head><body>
+<div class="login" id="login"><section class="card"><h3>Admin Arvexis</h3>
+<form id="lf"><label>Password<input type="password" id="pw" autocomplete="current-password"></label>
+<p class="msg" id="lm"></p><button class="btn">Masuk</button></form></section></div>
+
+<div id="app" hidden>
+  <div class="top"><h2>Pendaftar Tournament</h2><div class="act"><button class="btn sm ghost" id="csv">Export CSV</button><button class="btn sm ghost" id="out">Keluar</button></div></div>
+  <div class="stats" id="stats"></div>
+  <div class="tools"><input id="q" placeholder="Cari tim, Discord, atau Roblox"><select id="fs"><option value="">Semua status</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button class="btn sm ghost" id="rf">Muat ulang</button></div>
+  <div class="list" id="list"></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let T=sessionStorage.getItem('arv_t'),data=[];
+const api=async(o)=>{const r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+T},body:JSON.stringify(o)});const j=await r.json();if(!r.ok){const e=new Error(j.error||'Error');e.code=r.status;throw e}return j};
+const label={pending:'Pending',approved:'Approved',rejected:'Rejected'};
+
+async function load(){
+  try{data=(await api({action:'list'})).teams;$('#login').hidden=true;$('#app').hidden=false;render()}
+  catch(e){if(e.code===401){sessionStorage.removeItem('arv_t');T=null;$('#login').hidden=false;$('#app').hidden=true}else alert(e.message)}
+}
+function render(){
+  const c=s=>data.filter(t=>t.status===s).length;
+  $('#stats').innerHTML=[['Total',data.length],['Pending',c('pending')],['Approved',c('approved')],['Rejected',c('rejected')]].map(([a,b])=>`<div class="stat"><b>${b}</b><span>${a}</span></div>`).join('');
+  const q=$('#q').value.toLowerCase(),fs=$('#fs').value;
+  const rows=data.filter(t=>(!fs||t.status===fs)&&(!q||JSON.stringify([t.team,t.players,t.sub]).toLowerCase().includes(q)));
+  const open=new Set([...document.querySelectorAll('details[open]')].map(d=>d.dataset.id));
+  $('#list').innerHTML=rows.length?rows.map(t=>{
+    const ps=[...t.players.map((p,i)=>[i+1,p]),...(t.sub?[['Cadangan',t.sub]]:[])];
+    return `<details class="team" data-id="${t.id}" ${open.has(t.id)?'open':''}><summary><div><div class="tn">${esc(t.team)}</div><div class="td">${new Date(t.createdAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}</div></div><span class="badge ${t.status}">${label[t.status]}</span></summary>
+    <div class="det"><table><tr><th>#</th><th>Discord</th><th>Roblox</th><th>Role</th></tr>${ps.map(([n,p])=>`<tr><td>${n}</td><td>${esc(p.discord)}</td><td>${esc(p.roblox)}</td><td>${esc(p.role)}</td></tr>`).join('')}</table>
+    <div class="act"><select data-st="${t.id}">${Object.entries(label).map(([k,v])=>`<option value="${k}" ${k===t.status?'selected':''}>${v}</option>`).join('')}</select><button class="btn sm ghost" data-del="${t.id}">Hapus</button></div></div></details>`}).join(''):'<p class="empty">Belum ada pendaftar yang cocok.</p>';
+}
+$('#lf').onsubmit=async e=>{e.preventDefault();$('#lm').textContent='';
+  try{const r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',password:$('#pw').value})});const j=await r.json();if(!r.ok)throw new Error(j.error);T=j.token;sessionStorage.setItem('arv_t',T);load()}
+  catch(err){$('#lm').textContent=err.message}};
+$('#list').addEventListener('change',async e=>{const id=e.target.dataset.st;if(!id)return;try{await api({action:'status',id,status:e.target.value});const t=data.find(x=>x.id===id);t.status=e.target.value;render()}catch(err){alert(err.message)}});
+$('#list').addEventListener('click',async e=>{const id=e.target.dataset.del;if(!id)return;const t=data.find(x=>x.id===id);if(!confirm('Hapus tim "'+t.team+'"?'))return;try{await api({action:'delete',id});data=data.filter(x=>x.id!==id);render()}catch(err){alert(err.message)}});
+$('#q').oninput=render;$('#fs').onchange=render;$('#rf').onclick=load;
+$('#out').onclick=()=>{sessionStorage.removeItem('arv_t');location.reload()};
+$('#csv').onclick=()=>{
+  const rows=[['Tim','Status','Tanggal','Tipe','Discord','Roblox','Role']];
+  data.forEach(t=>[...t.players.map((p,i)=>['Pemain '+(i+1),p]),...(t.sub?[['Cadangan',t.sub]]:[])].forEach(([k,p])=>rows.push([t.team,t.status,t.createdAt,k,p.discord,p.roblox,p.role])));
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));a.download='arvexis-tournament.csv';a.click()};
+if(T)load();
+</script></body></html>
