@@ -1,7 +1,8 @@
 {
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/tim", "destination": "/teams.html" }
+    { "source": "/tim", "destination": "/teams.html" },
+    { "source": "/rules", "destination": "/rules.html" }
   ],
   "headers": [
     { "source": "/(.*)", "headers": [
