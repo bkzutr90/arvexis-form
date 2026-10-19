@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daftar Tim | Arvexis Community</title><meta name="theme-color" content="#080406">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css"></head><body>
+<header class="hero"><img src="/banner.png" alt="Arvexis Community"><div class="ht"><h1>Daftar Tim</h1><p id="sub">Memuat...</p></div></header>
+<main class="tl">
+  <select id="evs" aria-label="Pilih event"></select>
+  <ol id="list"></ol>
+  <p class="empty" id="empty" hidden>Belum ada tim yang di-approve.</p>
+  <p style="text-align:center;margin-top:16px"><a class="btn sm" href="/">Daftarkan tim</a></p>
+</main>
+<footer>Arvexis Community</footer>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function load(id){
+  try{
+    const j=await (await fetch('/api/teams'+(id?'?event='+encodeURIComponent(id):''))).json();
+    if(!j.event)throw 0;
+    $('#evs').innerHTML=j.events.map(e=>`<option value="${esc(e.id)}" ${e.id===j.event.id?'selected':''}>${esc(e.name)}</option>`).join('');
+    $('#sub').textContent=`${j.event.name} \u2022 ${j.teams.length} approved, ${j.pending} menunggu approve (slot ${j.event.count}/${j.event.max})`;
+    $('#list').innerHTML=j.teams.map(t=>`<li>${esc(t)}</li>`).join('');
+    $('#empty').hidden=j.teams.length>0;
+  }catch{$('#sub').textContent='Gagal memuat daftar tim.'}
+}
+$('#evs').onchange=e=>load(e.target.value);load();
+</script></body></html>

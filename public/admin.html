@@ -9,44 +9,119 @@
 
 <div id="app" hidden>
   <div class="top"><h2>Pendaftar Tournament</h2><div class="act"><button class="btn sm ghost" id="csv">Export CSV</button><button class="btn sm ghost" id="out">Keluar</button></div></div>
+  <div class="tools"><select id="ev" aria-label="Event"></select><button class="btn sm ghost" id="evedit">Edit event</button><button class="btn sm ghost" id="evnew">Event baru</button><span class="mini" id="evi"></span></div>
   <div class="stats" id="stats"></div>
   <div class="tools"><input id="q" placeholder="Cari tim, Discord, atau Roblox"><select id="fs"><option value="">Semua status</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button class="btn sm ghost" id="rf">Muat ulang</button></div>
   <div class="list" id="list"></div>
 </div>
+
+<dialog id="evd"><form id="evf" class="f" method="dialog">
+  <h3 id="evt">Event</h3>
+  <label>Nama event<input id="e_name" maxlength="60" placeholder="Fun Match #2"></label>
+  <div class="grid" style="grid-template-columns:1fr 1fr"><label>Maks. tim<input id="e_max" type="number" min="1" max="256" value="16"></label><label>Hadiah<input id="e_prize" maxlength="120" placeholder="Rp250.000"></label></div>
+  <div class="grid" style="grid-template-columns:1fr 1fr"><label>Buka (WIB)<input id="e_open" type="datetime-local"></label><label>Tutup (WIB)<input id="e_close" type="datetime-local"></label></div>
+  <label>Jadwal (satu baris per item)<textarea id="e_sched" placeholder="Technical Meeting: 23 Okt 19:00 WIB"></textarea></label>
+  <label>Link rules<input id="e_rules" placeholder="https://..."></label>
+  <label class="ck"><input type="checkbox" id="e_on" checked>Pendaftaran dibuka</label>
+  <label class="ck"><input type="checkbox" id="e_act" checked>Jadikan event aktif (yang tampil di halaman daftar)</label>
+  <div class="act"><button class="btn sm ghost" type="button" id="e_clean">Hapus role &amp; channel event ini</button><button class="btn sm ghost" type="button" data-close>Batal</button><button class="btn sm" id="e_save">Simpan</button></div>
+</form></dialog>
+
+<dialog id="td"><form id="tf" class="f" method="dialog">
+  <h3>Edit tim</h3><div id="tb" class="f"></div><p class="msg" id="tm"></p>
+  <div class="act"><button class="btn sm ghost" type="button" data-close>Batal</button><button class="btn sm" id="t_save">Simpan</button></div>
+</form></dialog>
+
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let T=sessionStorage.getItem('arv_t'),data=[];
+let T=sessionStorage.getItem('arv_t'),data=[],events=[],active='',cur='',editEv=null,editT=null;
 const api=async(o)=>{const r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+T},body:JSON.stringify(o)});const j=await r.json();if(!r.ok){const e=new Error(j.error||'Error');e.code=r.status;throw e}return j};
 const label={pending:'Pending',approved:'Approved',rejected:'Rejected'};
+const evId=t=>t.eventId||'fm1';
+const toL=i=>i?new Date(Date.parse(i)+7*36e5).toISOString().slice(0,16):'';
+const toI=v=>v?new Date(v+':00+07:00').toISOString():'';
+const ROLES=['Killer','Survivor','Killer + Survivor'];
+document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target.hasAttribute('data-close'))d.close()}));
 
 async function load(){
-  try{data=(await api({action:'list'})).teams;$('#login').hidden=true;$('#app').hidden=false;render()}
-  catch(e){if(e.code===401){sessionStorage.removeItem('arv_t');T=null;$('#login').hidden=false;$('#app').hidden=true}else alert(e.message)}
+  try{
+    const j=await api({action:'list'});data=j.teams;events=j.events;active=j.active;
+    if(!events.some(e=>e.id===cur))cur=active;
+    $('#login').hidden=true;$('#app').hidden=false;fillEv();render();
+  }catch(e){if(e.code===401){sessionStorage.removeItem('arv_t');T=null;$('#login').hidden=false;$('#app').hidden=true}else alert(e.message)}
+}
+function fillEv(){
+  $('#ev').innerHTML=events.map(e=>`<option value="${esc(e.id)}" ${e.id===cur?'selected':''}>${esc(e.name)}${e.id===active?' (aktif)':''}</option>`).join('');
+  const e=events.find(x=>x.id===cur);
+  $('#evi').textContent=e?`${e.open?'Dibuka':'Ditutup'} \u2022 maks ${e.max} tim`:'';
 }
 function render(){
-  const c=s=>data.filter(t=>t.status===s).length;
-  $('#stats').innerHTML=[['Total',data.length],['Pending',c('pending')],['Approved',c('approved')],['Rejected',c('rejected')]].map(([a,b])=>`<div class="stat"><b>${b}</b><span>${a}</span></div>`).join('');
+  const mine=data.filter(t=>evId(t)===cur);
+  const c=s=>mine.filter(t=>t.status===s).length;
+  $('#stats').innerHTML=[['Total',mine.length],['Pending',c('pending')],['Approved',c('approved')],['Rejected',c('rejected')]].map(([a,b])=>`<div class="stat"><b>${b}</b><span>${a}</span></div>`).join('');
   const q=$('#q').value.toLowerCase(),fs=$('#fs').value;
-  const rows=data.filter(t=>(!fs||t.status===fs)&&(!q||JSON.stringify([t.team,t.players,t.sub]).toLowerCase().includes(q)));
+  const rows=mine.filter(t=>(!fs||t.status===fs)&&(!q||JSON.stringify([t.team,t.players,t.sub]).toLowerCase().includes(q)));
   const open=new Set([...document.querySelectorAll('details[open]')].map(d=>d.dataset.id));
   $('#list').innerHTML=rows.length?rows.map(t=>{
     const ps=[...t.players.map((p,i)=>[i+1,p]),...(t.sub?[['Cadangan',t.sub]]:[])];
+    const pv=t.status==='approved'&&t.prov?t.prov:null;
+    const note=pv?(pv.error?`<p class="mini bad">Role/channel gagal dibuat: ${esc(pv.error)}</p>`:(pv.missing&&pv.missing.length?`<p class="mini bad">Role belum diberikan (belum join server): ${pv.missing.map(esc).join(', ')}</p>`:'<p class="mini">Role tim sudah diberikan ke semua anggota.</p>')):'';
     return `<details class="team" data-id="${t.id}" ${open.has(t.id)?'open':''}><summary><div><div class="tn">${esc(t.team)}</div><div class="td">${new Date(t.createdAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}</div></div><span class="badge ${t.status}">${label[t.status]}</span></summary>
-    <div class="det"><table><tr><th>#</th><th>Discord</th><th>Roblox</th><th>Role</th></tr>${ps.map(([n,p])=>`<tr><td>${n}</td><td>${esc(p.discord)}</td><td>${esc(p.roblox)}</td><td>${esc(p.role)}</td></tr>`).join('')}</table>
-    <div class="act"><select data-st="${t.id}">${Object.entries(label).map(([k,v])=>`<option value="${k}" ${k===t.status?'selected':''}>${v}</option>`).join('')}</select><button class="btn sm ghost" data-del="${t.id}">Hapus</button></div></div></details>`}).join(''):'<p class="empty">Belum ada pendaftar yang cocok.</p>';
+    <div class="det"><table><tr><th>#</th><th>Discord</th><th>Roblox</th><th>Role</th></tr>${ps.map(([n,p])=>`<tr><td>${n}</td><td>${esc(p.discord)}</td><td>${esc(p.roblox)}</td><td>${esc(p.role)}</td></tr>`).join('')}</table>${note}
+    <div class="act"><select data-st="${t.id}">${Object.entries(label).map(([k,v])=>`<option value="${k}" ${k===t.status?'selected':''}>${v}</option>`).join('')}</select><button class="btn sm ghost" data-edit="${t.id}">Edit</button>${t.status==='approved'?`<button class="btn sm ghost" data-sync="${t.id}">Sinkron role</button>`:''}<button class="btn sm ghost" data-del="${t.id}">Hapus</button></div></div></details>`}).join(''):'<p class="empty">Belum ada pendaftar yang cocok.</p>';
 }
+const upd=(id,rec)=>{const t=data.find(x=>x.id===id);Object.assign(t,rec);if(!rec.prov)delete t.prov;render()};
+
 $('#lf').onsubmit=async e=>{e.preventDefault();$('#lm').textContent='';
   try{const r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',password:$('#pw').value})});const j=await r.json();if(!r.ok)throw new Error(j.error);T=j.token;sessionStorage.setItem('arv_t',T);load()}
   catch(err){$('#lm').textContent=err.message}};
-$('#list').addEventListener('change',async e=>{const id=e.target.dataset.st;if(!id)return;try{await api({action:'status',id,status:e.target.value});const t=data.find(x=>x.id===id);t.status=e.target.value;render()}catch(err){alert(err.message)}});
-$('#list').addEventListener('click',async e=>{const id=e.target.dataset.del;if(!id)return;const t=data.find(x=>x.id===id);if(!confirm('Hapus tim "'+t.team+'"?'))return;try{await api({action:'delete',id});data=data.filter(x=>x.id!==id);render()}catch(err){alert(err.message)}});
+$('#list').addEventListener('change',async e=>{const id=e.target.dataset.st;if(!id)return;e.target.disabled=true;try{const r=await api({action:'status',id,status:e.target.value});upd(id,r.team)}catch(err){alert(err.message);render()}});
+$('#list').addEventListener('click',async e=>{
+  const b=e.target,id=b.dataset.del||b.dataset.sync||b.dataset.edit;if(!id)return;
+  const t=data.find(x=>x.id===id);
+  if(b.dataset.edit)return openTeam(t);
+  if(b.dataset.sync){b.disabled=true;try{const r=await api({action:'sync',id});upd(id,r.team)}catch(err){alert(err.message);render()}return}
+  if(!confirm('Hapus tim "'+t.team+'"? Role & channel tim di Discord ikut dihapus.'))return;
+  try{await api({action:'delete',id});data=data.filter(x=>x.id!==id);render()}catch(err){alert(err.message)}});
 $('#q').oninput=render;$('#fs').onchange=render;$('#rf').onclick=load;
+$('#ev').onchange=e=>{cur=e.target.value;fillEv();render()};
 $('#out').onclick=()=>{sessionStorage.removeItem('arv_t');location.reload()};
 $('#csv').onclick=()=>{
-  const rows=[['Tim','Status','Tanggal','Tipe','Discord','Roblox','Role']];
-  data.forEach(t=>[...t.players.map((p,i)=>['Pemain '+(i+1),p]),...(t.sub?[['Cadangan',t.sub]]:[])].forEach(([k,p])=>rows.push([t.team,t.status,t.createdAt,k,p.discord,p.roblox,p.role])));
+  const rows=[['Event','Tim','Status','Tanggal','Tipe','Discord','Roblox','Role']];
+  data.filter(t=>evId(t)===cur).forEach(t=>[...t.players.map((p,i)=>['Pemain '+(i+1),p]),...(t.sub?[['Cadangan',t.sub]]:[])].forEach(([k,p])=>rows.push([cur,t.team,t.status,t.createdAt,k,p.discord,p.roblox,p.role])));
   const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));a.download='arvexis-tournament.csv';a.click()};
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));a.download='arvexis-'+cur+'.csv';a.click()};
+
+/* ---- Event ---- */
+function openEvent(e){
+  editEv=e;$('#evt').textContent=e?'Edit event':'Event baru';
+  $('#e_name').value=e?.name||'';$('#e_max').value=e?.max||16;$('#e_prize').value=e?.prize||'';
+  $('#e_open').value=toL(e?.opensAt);$('#e_close').value=toL(e?.closesAt);
+  $('#e_sched').value=(e?.schedule||[]).join('\n');$('#e_rules').value=e?.rulesUrl||'';
+  $('#e_on').checked=e?e.open!==false:true;$('#e_act').checked=e?e.id===active:true;
+  $('#e_clean').hidden=!e;$('#evd').showModal();
+}
+$('#evedit').onclick=()=>openEvent(events.find(e=>e.id===cur));
+$('#evnew').onclick=()=>openEvent(null);
+$('#evf').onsubmit=async e=>{e.preventDefault();
+  const ev={...(editEv||{}),name:$('#e_name').value,max:$('#e_max').value,prize:$('#e_prize').value,opensAt:toI($('#e_open').value),closesAt:toI($('#e_close').value),schedule:$('#e_sched').value.split('\n'),rulesUrl:$('#e_rules').value,open:$('#e_on').checked};
+  try{const r=await api({action:'event_save',event:ev,activate:$('#e_act').checked});cur=r.id;$('#evd').close();load()}catch(err){alert(err.message)}};
+$('#e_clean').onclick=async()=>{
+  if(!confirm('Hapus role & channel Discord semua tim di event ini? Data pendaftaran tetap tersimpan.'))return;
+  try{const r=await api({action:'cleanup',event:cur});alert(r.count+' tim dibersihkan.');load()}catch(err){alert(err.message)}};
+
+/* ---- Edit tim ---- */
+const row=(t,i,p={})=>`<div class="grid" data-r="${i}"><label>${t} - Discord<input data-k="discord" value="${esc(p.discord)}" maxlength="40"></label><label>Roblox<input data-k="roblox" value="${esc(p.roblox)}" maxlength="40"></label><label>Role<select data-k="role"><option value="">Pilih role</option>${ROLES.map(r=>`<option ${r===p.role?'selected':''}>${r}</option>`).join('')}</select></label></div>`;
+function openTeam(t){
+  editT=t;$('#tm').textContent='';
+  $('#tb').innerHTML=`<label>Nama tim<input id="t_name" maxlength="40" value="${esc(t.team)}"></label>`+t.players.map((p,i)=>row('Pemain '+(i+1),i,p)).join('')+row('Cadangan','s',t.sub||{});
+  $('#td').showModal();
+}
+const rd=el=>Object.fromEntries([...el.querySelectorAll('input,select')].map(i=>[i.dataset.k,i.value.trim()]));
+$('#tf').onsubmit=async e=>{e.preventDefault();const b=$('#t_save');b.disabled=true;$('#tm').textContent='';
+  const rows=[...document.querySelectorAll('#tb [data-r]')].map(rd);
+  try{const r=await api({action:'update',id:editT.id,team:$('#t_name').value,players:rows.slice(0,5),sub:rows[5]});upd(editT.id,r.team);$('#td').close()}
+  catch(err){$('#tm').textContent=err.message}finally{b.disabled=false}};
 if(T)load();
 </script></body></html>
