@@ -45,12 +45,18 @@ module.exports = async (req, res) => {
     const names = missing.map(m => `• ${m.p.discord}`).join('\n');
     const found = results.find(r => r.member);
     if (!found) return eph(res, `⏸️ Belum di-approve. Belum join:\n${names}\nTidak ada pemain tim ini yang ditemukan di server, jadi tidak ada yang bisa di-mention. Hubungi tim lewat cara lain.`);
-    const invite = process.env.DISCORD_INVITE_URL ? `\nLink invite: ${process.env.DISCORD_INVITE_URL}` : '';
+    const invite = process.env.DISCORD_INVITE_URL ? `\nLink invite: <${process.env.DISCORD_INVITE_URL}>` : '';
     const uid = found.member.user.id;
-    return res.status(200).json({ type: 4, data: {
-      content: `<@${uid}> pendaftaran tim **${rec.team}** belum bisa di-approve (dicek oleh ${who}). Anggota berikut belum bergabung ke Discord Arvexis Community:\n${names}\nMohon minta mereka bergabung, lalu kabari panitia.${invite}`,
-      allowed_mentions: { users: [uid] },
-    } });
+    const content = `<@${uid}> pendaftaran tim **${rec.team}** belum bisa di-approve (dicek oleh ${who}). Anggota berikut belum bergabung ke Discord Arvexis Community:\n${names}\nMohon minta mereka bergabung, lalu kabari panitia.${invite}`;
+    const allowed_mentions = { users: [uid] };
+    const chan = process.env.DISCORD_NOTIFY_CHANNEL_ID;
+    if (!chan) return res.status(200).json({ type: 4, data: { content, allowed_mentions } });
+    const r = await D.bot(`/channels/${chan}/messages`, 'POST', { content, allowed_mentions });
+    if (!r.ok) {
+      console.error('Kirim mention gagal:', r.status, await r.text());
+      return eph(res, `⚠️ Gagal mengirim mention ke <#${chan}> (kode ${r.status}). Pastikan DISCORD_NOTIFY_CHANNEL_ID benar dan bot punya izin View Channel + Send Messages di channel itu.`);
+    }
+    return eph(res, `⏸️ Belum di-approve. Belum join:\n${names}\nPemain ${found.p.discord} sudah di-mention di <#${chan}>.`);
   } catch (e) {
     console.error(e);
     return eph(res, 'Terjadi kesalahan: ' + e.message);
