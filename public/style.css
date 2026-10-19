@@ -3,10 +3,12 @@
 html{background:var(--bg)}
 body{font:15px/1.5 Inter,system-ui,sans-serif;color:var(--tx);min-height:100vh;background:radial-gradient(900px 400px at 50% -100px,#3a0a10 0,transparent 70%),var(--bg)}
 h1,h2,h3{font-family:Cinzel,Georgia,serif;letter-spacing:.02em}
-.hero{position:relative;min-height:240px;display:grid;place-items:center;text-align:center;padding:40px 20px;background:linear-gradient(180deg,rgba(8,4,6,.35),var(--bg)),url(/banner.png) center/cover}
-.hero h1{font-size:clamp(26px,6vw,44px);font-weight:800;text-shadow:0 4px 30px #000}
+.hero{text-align:center;padding-bottom:18px}
+.hero img{display:block;width:100%;max-width:900px;margin:0 auto;aspect-ratio:830/331;object-fit:cover;-webkit-mask-image:linear-gradient(#000 78%,transparent);mask-image:linear-gradient(#000 78%,transparent)}
+.hero .ht{padding:0 20px;margin-top:-6px}
+.hero h1{font-size:clamp(24px,5.5vw,40px);font-weight:800}
 .hero p{color:#d9c4c6;max-width:460px;margin:10px auto 0;text-shadow:0 2px 12px #000}
-.wrap{max-width:760px;margin:-10px auto 0;padding:0 14px 40px}
+.wrap{max-width:760px;margin:0 auto;padding:0 14px 40px}
 .card{background:linear-gradient(180deg,var(--s2),var(--s1));border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
 .card h3{font-size:15px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
 .card h3 small{font:500 12px Inter;color:var(--mut)}
@@ -26,7 +28,7 @@ input.bad,select.bad{border-color:var(--red2)}
 .done{text-align:center;padding:36px 20px}.done h2{font-size:22px;margin-bottom:8px}.done p{color:var(--mut);margin-bottom:18px}
 footer{text-align:center;color:var(--mut);font-size:12px;padding:0 0 24px}
 :focus-visible{outline:2px solid var(--red2);outline-offset:2px}
-@media(max-width:600px){.grid{grid-template-columns:1fr}.hero{min-height:190px}.card{padding:14px}}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.card{padding:14px}}
 /* admin */
 .top{display:flex;gap:10px;justify-content:space-between;align-items:center;padding:14px;max-width:980px;margin:0 auto}
 .top h2{font-size:18px}
