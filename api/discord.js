@@ -44,16 +44,13 @@ module.exports = async (req, res) => {
 
     const names = missing.map(m => `• ${m.p.discord}`).join('\n');
     const found = results.find(r => r.member);
-    let info = ' Tidak ada pemain tim ini yang ditemukan di server, jadi tidak ada yang bisa di-mention.';
-    if (found) {
-      const invite = process.env.DISCORD_INVITE_URL ? `\nLink invite: ${process.env.DISCORD_INVITE_URL}` : '';
-      await D.bot(`/channels/${i.channel_id}/messages`, 'POST', {
-        content: `<@${found.member.user.id}> pendaftaran tim **${rec.team}** belum bisa di-approve. Anggota berikut belum bergabung ke Discord Arvexis Community:\n${names}\nMohon minta mereka bergabung, lalu kabari panitia.${invite}`,
-        allowed_mentions: { users: [found.member.user.id] },
-      });
-      info = ` Pemain ${found.p.discord} sudah di-mention di channel ini.`;
-    }
-    return eph(res, `⏸️ Belum di-approve. Belum join:\n${names}\n${info}`);
+    if (!found) return eph(res, `⏸️ Belum di-approve. Belum join:\n${names}\nTidak ada pemain tim ini yang ditemukan di server, jadi tidak ada yang bisa di-mention. Hubungi tim lewat cara lain.`);
+    const invite = process.env.DISCORD_INVITE_URL ? `\nLink invite: ${process.env.DISCORD_INVITE_URL}` : '';
+    const uid = found.member.user.id;
+    return res.status(200).json({ type: 4, data: {
+      content: `<@${uid}> pendaftaran tim **${rec.team}** belum bisa di-approve (dicek oleh ${who}). Anggota berikut belum bergabung ke Discord Arvexis Community:\n${names}\nMohon minta mereka bergabung, lalu kabari panitia.${invite}`,
+      allowed_mentions: { users: [uid] },
+    } });
   } catch (e) {
     console.error(e);
     return eph(res, 'Terjadi kesalahan: ' + e.message);
