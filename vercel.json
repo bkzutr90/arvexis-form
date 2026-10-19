@@ -1,1 +1,12 @@
-{ "rewrites": [{ "source": "/admin", "destination": "/admin.html" }] }
+{
+  "rewrites": [
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/tim", "destination": "/teams.html" }
+  ],
+  "headers": [
+    { "source": "/(.*)", "headers": [
+      { "key": "X-Content-Type-Options", "value": "nosniff" },
+      { "key": "X-Frame-Options", "value": "DENY" }
+    ] }
+  ]
+}
