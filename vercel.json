@@ -1,14 +1,39 @@
 {
   "rewrites": [
-    { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/tim", "destination": "/teams.html" },
-    { "source": "/rules", "destination": "/rules.html" },
-    { "source": "/hitung-point", "destination": "/hitung-point.html" }
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/tim",
+      "destination": "/teams.html"
+    },
+    {
+      "source": "/rules",
+      "destination": "/rules.html"
+    },
+    {
+      "source": "/hitung-point",
+      "destination": "/hitung-point.html"
+    },
+    {
+      "source": "/skor",
+      "destination": "/skor.html"
+    }
   ],
   "headers": [
-    { "source": "/(.*)", "headers": [
-      { "key": "X-Content-Type-Options", "value": "nosniff" },
-      { "key": "X-Frame-Options", "value": "DENY" }
-    ] }
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        }
+      ]
+    }
   ]
 }
