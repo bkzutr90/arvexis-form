@@ -21,6 +21,10 @@
 .cg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
 .res{display:flex;gap:12px;align-items:baseline;margin-top:12px;flex-wrap:wrap}
 .res b{font:800 34px Cinzel;color:#fff}.res span{color:var(--mut);font-size:13px}
+.svh,.sv{display:grid;grid-template-columns:1fr 90px 120px;gap:8px;align-items:center}
+.svh{font-size:12px;color:var(--mut);margin:10px 0 4px}
+.sv{margin-bottom:6px}.sv b{font-size:13.5px}.sv input[type=number]{margin:0;text-align:center}
+.ckb{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--tx)}.ckb input{width:18px;height:18px;margin:0;accent-color:var(--red2)}
 .hint{font-size:12.5px;color:var(--mut);margin-top:8px}
 .rk td:not(:first-child),.rk th:not(:first-child){text-align:center}
 .rk td:first-child{font-weight:600}
@@ -32,10 +36,13 @@
 
 <section class="card"><h3>Kalkulator poin satu side<small>maks 13</small></h3>
   <label>Side yang dimainkan<select id="c_role"><option value="k">Killer</option><option value="s">Survivor</option></select></label>
-  <div class="cg" id="ck">
-    <label>Survivor di-hook<input id="c_hook" type="number" min="0" max="4" inputmode="numeric" placeholder="0"></label>
-    <label>Mati kehabisan darah<input id="c_bleed" type="number" min="0" max="4" inputmode="numeric" placeholder="0"></label>
-    <label>Pengurangan poin<input class="c_pen" type="number" min="0" inputmode="numeric" placeholder="0"></label>
+  <div id="ck">
+    <div class="svh"><span>Survivor</span><span>Jumlah hook</span><span>Mati kehabisan darah</span></div>
+    <div class="sv"><b>Survivor 1</b><input class="c_h" type="number" min="0" inputmode="numeric" placeholder="0"><label class="ckb"><input class="c_d" type="checkbox">Mati</label></div>
+    <div class="sv"><b>Survivor 2</b><input class="c_h" type="number" min="0" inputmode="numeric" placeholder="0"><label class="ckb"><input class="c_d" type="checkbox">Mati</label></div>
+    <div class="sv"><b>Survivor 3</b><input class="c_h" type="number" min="0" inputmode="numeric" placeholder="0"><label class="ckb"><input class="c_d" type="checkbox">Mati</label></div>
+    <div class="sv"><b>Survivor 4</b><input class="c_h" type="number" min="0" inputmode="numeric" placeholder="0"><label class="ckb"><input class="c_d" type="checkbox">Mati</label></div>
+    <label style="margin-top:10px">Pengurangan poin<input class="c_pen" type="number" min="0" inputmode="numeric" placeholder="0"></label>
   </div>
   <div class="cg" id="cs" hidden>
     <label>Generator selesai<input id="c_gen" type="number" min="0" max="5" inputmode="numeric" placeholder="0"></label>
@@ -43,13 +50,15 @@
     <label>Pengurangan poin<input class="c_pen" type="number" min="0" inputmode="numeric" placeholder="0"></label>
   </div>
   <div class="res"><b id="c_out">0</b><span id="c_det"></span></div>
-  <p class="hint" id="c_hint">Killer: hook +1 per survivor (yang belum mati), kehabisan darah 3 per survivor (menggantikan poin hook, slugging tidak dihitung).</p>
+  <p class="hint" id="c_hint">Killer: +1 setiap hook (jumlah hook tidak dibatasi), +3 per survivor yang mati kehabisan darah (maks 4 survivor). Total tetap maks 13, slugging tidak dihitung.</p>
 </section>
 
 <div class="bar">
   <button class="btn sm" id="add">+ Match baru</button>
   <button class="btn sm ghost" id="copy">Salin hasil</button>
   <button class="btn sm ghost" id="clear">Kosongkan</button>
+  <button class="btn sm ghost" id="login">Login admin</button>
+  <a class="btn sm ghost" href="/skor" target="_blank" style="text-decoration:none">Lihat halaman publik</a>
   <span class="mini" id="saved" style="align-self:center"></span>
 </div>
 <div id="ms"></div>
@@ -58,7 +67,7 @@
   <div class="tw" style="overflow-x:auto"><table class="rk"><thead><tr><th>Tim</th><th>Main</th><th>Menang</th><th>Kalah</th><th>Total poin</th></tr></thead><tbody id="rk"></tbody></table></div>
   <p class="empty" id="rke" hidden style="padding:16px 0">Belum ada data.</p>
 </section>
-<p class="mini" style="text-align:center">Data tersimpan di browser perangkat ini saja. Pemenang otomatis ditentukan kalau skor sudah lengkap, atau kalau tim lawan mustahil menyusul (tiap side maks 13). Bisa dikunci manual lewat menu Pemenang.</p>
+<p class="mini" style="text-align:center">Tanpa login, data hanya tersimpan di browser ini. Setelah login admin, setiap perubahan otomatis tampil di halaman publik /skor. Pemenang otomatis ditentukan kalau skor sudah lengkap, atau kalau tim lawan mustahil menyusul (tiap side maks 13). Bisa dikunci manual lewat menu Pemenang.</p>
 </main>
 <footer>Arvexis Community</footer>
 <script>
@@ -75,7 +84,22 @@ const seed=()=>[
 const blank=()=>({a:{n:'',s:['','']},b:{n:'',s:['','']},w:''});
 let M;try{M=JSON.parse(localStorage.getItem(KEY))}catch{}
 if(!Array.isArray(M))M=seed();
-let t;const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(M));$('#saved').textContent='Tersimpan';clearTimeout(t);t=setTimeout(()=>$('#saved').textContent='',1200)}catch{}};
+let t,pt,T=sessionStorage.getItem('arv_t');
+const flash=x=>{$('#saved').textContent=x;clearTimeout(t);t=setTimeout(()=>$('#saved').textContent=T?'Live: tersambung':'',2000)};
+const push=async()=>{
+  if(!T)return;
+  try{const r=await fetch('/api/scores',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+T},body:JSON.stringify({matches:M})});
+    if(r.status===401){T=null;sessionStorage.removeItem('arv_t');authUI();flash('Sesi habis, login ulang');return}
+    if(!r.ok)throw 0;flash('Tersimpan + live')}catch{flash('Gagal kirim ke server')}
+};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(M))}catch{}
+  if(T){clearTimeout(pt);pt=setTimeout(push,500);flash('Mengirim...')}else flash('Tersimpan (lokal)')};
+function authUI(){$('#login').textContent=T?'Keluar admin':'Login admin';$('#saved').textContent=T?'Live: tersambung':''}
+async function pull(){
+  try{const j=await (await fetch('/api/scores',{cache:'no-store'})).json();
+    if(Array.isArray(j.matches)){M=j.matches;try{localStorage.setItem(KEY,JSON.stringify(M))}catch{}render()}else await push()}
+  catch{flash('Gagal memuat dari server')}
+}
 
 /* ---- Kalkulator satu side ---- */
 const C=(id,max)=>Math.max(0,Math.min(max,Math.floor(+$(id).value)||0));
@@ -83,8 +107,11 @@ function calc(){
   const k=$('#c_role').value==='k';$('#ck').hidden=!k;$('#cs').hidden=k;
   const box=$(k?'#ck':'#cs'),pen=Math.max(0,Math.floor(+box.querySelector('.c_pen').value)||0);
   let raw,det;
-  if(k){const h=C('#c_hook',4),b=C('#c_bleed',4);raw=h+b*3;det=`${h} hook x1 + ${b} kehabisan darah x3 = ${raw}`;
-    $('#c_hint').textContent='Killer: hook +1 per survivor (yang belum mati), kehabisan darah 3 per survivor (menggantikan poin hook, slugging tidak dihitung).'}
+  if(k){const rows=[...document.querySelectorAll('#ck .sv')];
+    const pts=rows.map(r=>{const h=Math.max(0,Math.floor(+r.querySelector('.c_h').value)||0),d=r.querySelector('.c_d').checked;return{h,d,p:d?3:h}});
+    raw=pts.reduce((a,x)=>a+x.p,0);
+    det=pts.map((x,i)=>`S${i+1}: ${x.d?'mati = 3':x.h+' hook = '+x.h}`).join(' | ')+` => ${raw}`;
+    $('#c_hint').textContent='Killer: tiap survivor +1 per hook (tanpa batas). Survivor yang mati kehabisan darah bernilai 3 (menggantikan poin hook-nya). Slugging tidak dihitung. Total maks 13.'}
   else{const g=C('#c_gen',5),e=C('#c_esc',4);raw=g+e*2;det=`${g} gen x1 + ${e} kabur x2 = ${raw}`;
     $('#c_hint').textContent='Survivor: +1 per generator selesai, +2 per survivor yang kabur.'}
   const capped=Math.min(13,raw),fin=capped-pen;
@@ -171,5 +198,13 @@ $('#copy').onclick=async()=>{
   try{await navigator.clipboard.writeText(txt);$('#saved').textContent='Hasil disalin'}
   catch{prompt('Salin teks ini:',txt)}
 };
-render();
+$('#login').onclick=async()=>{
+  if(T){T=null;sessionStorage.removeItem('arv_t');authUI();return}
+  const pw=prompt('Password admin:');if(!pw)return;
+  try{const r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',password:pw})});
+    const j=await r.json();if(!r.ok)throw new Error(j.error);
+    T=j.token;sessionStorage.setItem('arv_t',T);authUI();pull()}
+  catch(e){alert(e.message||'Login gagal')}
+};
+render();authUI();if(T)pull();
 </script></body></html>

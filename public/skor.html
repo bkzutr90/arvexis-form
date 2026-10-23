@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skor Live | Arvexis Community</title><meta name="theme-color" content="#080406">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<style>
+[hidden]{display:none!important}
+.live{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;color:var(--mut)}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:p 1.6s infinite}
+.live.off i{background:#f0b429;animation:none}
+@keyframes p{50%{opacity:.3}}
+@media(prefers-reduced-motion:reduce){.live i{animation:none}}
+.mh{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.mh b{font-family:Cinzel}.mh .st{font-size:13px;color:var(--mut)}.mh .st.ok{color:var(--ok)}
+.hdr,.tr{display:grid;grid-template-columns:1fr 54px 54px 56px;gap:8px;align-items:center}
+.hdr{font-size:12px;color:var(--mut);margin-bottom:4px}.hdr span:not(:first-child){text-align:center}
+.tr{padding:8px 0;border-top:1px solid #2a1218}
+.tr .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.tr .sc{text-align:center;color:var(--tx)}
+.tot{font:700 20px Cinzel;text-align:center;color:#fff}
+.tr.win .tot,.tr.win .nm{color:var(--ok)}
+.rk td:not(:first-child),.rk th:not(:first-child){text-align:center}.rk td:first-child{font-weight:600}
+.rk th:nth-child(1),.rk td:nth-child(1){display:table-cell}
+.bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+</style></head><body>
+<header class="hero"><img src="/banner.png" alt="Arvexis Community"><div class="ht"><h1>Skor Live</h1><p>Hasil match Violence District Arvexis Community, diperbarui otomatis.</p></div></header>
+<main class="wrap">
+<div class="bar"><span class="live" id="lv"><i></i><span id="lt">Memuat...</span></span><a class="btn sm ghost" href="/tim" style="text-decoration:none">Daftar tim</a></div>
+<div id="ms"></div>
+<section class="card"><h3>Klasemen<small>dari match yang sudah ada pemenang</small></h3>
+  <div style="overflow-x:auto"><table class="rk"><thead><tr><th>Tim</th><th>Main</th><th>Menang</th><th>Kalah</th><th>Total poin</th></tr></thead><tbody id="rk"></tbody></table></div>
+  <p class="empty" id="rke" hidden style="padding:16px 0">Belum ada data.</p>
+</section>
+</main>
+<footer>Arvexis Community</footer>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const N=v=>v===''||v==null||isNaN(+v)?null:Math.max(0,Math.min(13,Math.round(+v)));
+const side=x=>{const f=x.s.map(N).filter(v=>v!==null);return{sum:f.reduce((a,b)=>a+b,0),miss:2-f.length}};
+function result(m){
+  if(m.w==='a'||m.w==='b')return{w:m.w,man:true};
+  const A=side(m.a),B=side(m.b);
+  if(!A.miss&&!B.miss)return{w:A.sum===B.sum?'draw':A.sum>B.sum?'a':'b'};
+  if(A.sum>B.sum+13*B.miss)return{w:'a'};
+  if(B.sum>A.sum+13*A.miss)return{w:'b'};
+  return{w:null};
+}
+const nm=(m,k)=>m[k].n.trim()||'Tim '+k.toUpperCase();
+const sc=v=>N(v)===null?'-':N(v);
+function draw(M){
+  $('#ms').innerHTML=M.length?M.map((m,i)=>{
+    const r=result(m);
+    const st=r.w==='draw'?'Seri':r.w?`Menang: ${esc(nm(m,r.w))}`:'Berlangsung';
+    const row=k=>`<div class="tr ${r.w===k?'win':''}"><span class="nm">${esc(nm(m,k))}</span><span class="sc">${sc(m[k].s[0])}</span><span class="sc">${sc(m[k].s[1])}</span><div class="tot">${side(m[k]).sum}</div></div>`;
+    return `<section class="card"><div class="mh"><b>Match ${i+1}</b><span class="st ${r.w&&r.w!=='draw'?'ok':''}">${st}</span></div>
+<div class="hdr"><span>Tim</span><span>Side 1</span><span>Side 2</span><span>Total</span></div>${row('a')}${row('b')}</section>`}).join(''):'<p class="empty">Belum ada match.</p>';
+  const T={};
+  M.forEach(m=>{const r=result(m);['a','b'].forEach(k=>{const n=m[k].n.trim();if(!n)return;
+    const x=T[n.toLowerCase()]||(T[n.toLowerCase()]={n,p:0,w:0,l:0,pt:0});
+    x.p++;x.pt+=side(m[k]).sum;if(r.w===k)x.w++;else if(r.w&&r.w!=='draw')x.l++})});
+  const l=Object.values(T).sort((a,b)=>b.w-a.w||b.pt-a.pt||a.n.localeCompare(b.n));
+  $('#rk').innerHTML=l.map(x=>`<tr><td>${esc(x.n)}</td><td>${x.p}</td><td>${x.w}</td><td>${x.l}</td><td>${x.pt}</td></tr>`).join('');
+  $('#rke').hidden=l.length>0;
+}
+let last='';
+async function load(){
+  try{
+    const j=await (await fetch('/api/scores',{cache:'no-store'})).json();
+    const M=Array.isArray(j.matches)?j.matches:[];
+    const sig=JSON.stringify(M);if(sig!==last){last=sig;draw(M)}
+    $('#lv').classList.remove('off');
+    $('#lt').textContent=j.updatedAt?'Live \u2022 update '+new Date(j.updatedAt).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'Asia/Jakarta'})+' WIB':'Live \u2022 menunggu data';
+  }catch{$('#lv').classList.add('off');$('#lt').textContent='Koneksi terputus, mencoba lagi...'}
+}
+load();setInterval(()=>{if(!document.hidden)load()},5000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
+</script></body></html>
