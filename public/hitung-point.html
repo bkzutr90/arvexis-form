@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hitung Point | Arvexis Community</title>
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#080406">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<style>
+[hidden]{display:none!important}
+.hdr,.tr{display:grid;grid-template-columns:1fr 74px 74px 64px;gap:8px;align-items:center}
+.hdr{font-size:12px;color:var(--mut);margin-bottom:4px;padding:0 2px}
+.tr{margin-bottom:8px}
+.tr input{margin:0;text-align:center}.tr input[data-f=n]{text-align:left}
+.tr input[type=number]{-moz-appearance:textfield}
+.tot{font:700 20px Cinzel;text-align:center;color:#fff}
+.tr.win .tot{color:var(--ok)}.tr.win input[data-f=n]{border-color:#1d5c41}
+.mh{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.mh b{font-family:Cinzel}.mh .st{flex:1;font-size:13px;color:var(--mut)}.mh .st.ok{color:var(--ok)}
+.wl{display:flex;gap:10px;align-items:center;margin-top:2px}.wl select{width:auto;margin:0}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.cg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.res{display:flex;gap:12px;align-items:baseline;margin-top:12px;flex-wrap:wrap}
+.res b{font:800 34px Cinzel;color:#fff}.res span{color:var(--mut);font-size:13px}
+.hint{font-size:12.5px;color:var(--mut);margin-top:8px}
+.rk td:not(:first-child),.rk th:not(:first-child){text-align:center}
+.rk td:first-child{font-weight:600}
+.rk th:nth-child(1),.rk td:nth-child(1){display:table-cell}
+@media(max-width:600px){.hdr,.tr{grid-template-columns:1fr 58px 58px 48px}.cg{grid-template-columns:1fr 1fr}}
+</style></head><body>
+<header class="hero"><img src="/banner.png" alt="Arvexis Community"><div class="ht"><h1>Hitung Point</h1><p>Catat skor tiap side, total dan pemenang dihitung otomatis.</p></div></header>
+<main class="wrap">
+
+<section class="card"><h3>Kalkulator poin satu side<small>maks 13</small></h3>
+  <label>Side yang dimainkan<select id="c_role"><option value="k">Killer</option><option value="s">Survivor</option></select></label>
+  <div class="cg" id="ck">
+    <label>Survivor di-hook<input id="c_hook" type="number" min="0" max="4" inputmode="numeric" placeholder="0"></label>
+    <label>Mati kehabisan darah<input id="c_bleed" type="number" min="0" max="4" inputmode="numeric" placeholder="0"></label>
+    <label>Pengurangan poin<input class="c_pen" type="number" min="0" inputmode="numeric" placeholder="0"></label>
+  </div>
+  <div class="cg" id="cs" hidden>
+    <label>Generator selesai<input id="c_gen" type="number" min="0" max="5" inputmode="numeric" placeholder="0"></label>
+    <label>Survivor kabur<input id="c_esc" type="number" min="0" max="4" inputmode="numeric" placeholder="0"></label>
+    <label>Pengurangan poin<input class="c_pen" type="number" min="0" inputmode="numeric" placeholder="0"></label>
+  </div>
+  <div class="res"><b id="c_out">0</b><span id="c_det"></span></div>
+  <p class="hint" id="c_hint">Killer: hook +1 per survivor (yang belum mati), kehabisan darah 3 per survivor (menggantikan poin hook, slugging tidak dihitung).</p>
+</section>
+
+<div class="bar">
+  <button class="btn sm" id="add">+ Match baru</button>
+  <button class="btn sm ghost" id="copy">Salin hasil</button>
+  <button class="btn sm ghost" id="clear">Kosongkan</button>
+  <span class="mini" id="saved" style="align-self:center"></span>
+</div>
+<div id="ms"></div>
+
+<section class="card"><h3>Rekap tim<small>dari match yang sudah ada pemenang</small></h3>
+  <div class="tw" style="overflow-x:auto"><table class="rk"><thead><tr><th>Tim</th><th>Main</th><th>Menang</th><th>Kalah</th><th>Total poin</th></tr></thead><tbody id="rk"></tbody></table></div>
+  <p class="empty" id="rke" hidden style="padding:16px 0">Belum ada data.</p>
+</section>
+<p class="mini" style="text-align:center">Data tersimpan di browser perangkat ini saja. Pemenang otomatis ditentukan kalau skor sudah lengkap, atau kalau tim lawan mustahil menyusul (tiap side maks 13). Bisa dikunci manual lewat menu Pemenang.</p>
+</main>
+<footer>Arvexis Community</footer>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const KEY='arv_hitung_v1';
+const seed=()=>[
+  {a:{n:'Sigma',s:[13,11]},b:{n:'Aet',s:[3,7]},w:''},
+  {a:{n:'CBT',s:[11,13]},b:{n:'DF',s:[4,4]},w:''},
+  {a:{n:'Orsted',s:[4,'']},b:{n:'Sword',s:[11,13]},w:''},
+  {a:{n:'Gears',s:[7,4]},b:{n:'Barudak',s:[9,13]},w:''},
+  {a:{n:'Vila',s:[8,'']},b:{n:'Hades',s:[9,8]},w:'a'},
+  {a:{n:'Cloud',s:[10,'']},b:{n:'TSC',s:[7,'']},w:''}];
+const blank=()=>({a:{n:'',s:['','']},b:{n:'',s:['','']},w:''});
+let M;try{M=JSON.parse(localStorage.getItem(KEY))}catch{}
+if(!Array.isArray(M))M=seed();
+let t;const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(M));$('#saved').textContent='Tersimpan';clearTimeout(t);t=setTimeout(()=>$('#saved').textContent='',1200)}catch{}};
+
+/* ---- Kalkulator satu side ---- */
+const C=(id,max)=>Math.max(0,Math.min(max,Math.floor(+$(id).value)||0));
+function calc(){
+  const k=$('#c_role').value==='k';$('#ck').hidden=!k;$('#cs').hidden=k;
+  const box=$(k?'#ck':'#cs'),pen=Math.max(0,Math.floor(+box.querySelector('.c_pen').value)||0);
+  let raw,det;
+  if(k){const h=C('#c_hook',4),b=C('#c_bleed',4);raw=h+b*3;det=`${h} hook x1 + ${b} kehabisan darah x3 = ${raw}`;
+    $('#c_hint').textContent='Killer: hook +1 per survivor (yang belum mati), kehabisan darah 3 per survivor (menggantikan poin hook, slugging tidak dihitung).'}
+  else{const g=C('#c_gen',5),e=C('#c_esc',4);raw=g+e*2;det=`${g} gen x1 + ${e} kabur x2 = ${raw}`;
+    $('#c_hint').textContent='Survivor: +1 per generator selesai, +2 per survivor yang kabur.'}
+  const capped=Math.min(13,raw),fin=capped-pen;
+  $('#c_out').textContent=fin;
+  $('#c_det').textContent=det+(raw>13?' (dibatasi 13)':'')+(pen?` - ${pen} pengurangan`:'');
+}
+document.querySelectorAll('#c_role,#ck input,#cs input').forEach(i=>i.addEventListener('input',calc));calc();
+
+/* ---- Match ---- */
+const N=v=>v===''||v==null||isNaN(+v)?null:Math.max(0,Math.min(13,Math.round(+v)));
+const side=x=>{const f=x.s.map(N).filter(v=>v!==null);return{sum:f.reduce((a,b)=>a+b,0),miss:2-f.length}};
+function result(m){
+  if(m.w==='a'||m.w==='b')return{w:m.w,man:true};
+  const A=side(m.a),B=side(m.b);
+  if(!A.miss&&!B.miss)return{w:A.sum===B.sum?'draw':A.sum>B.sum?'a':'b'};
+  if(A.sum>B.sum+13*B.miss)return{w:'a'};
+  if(B.sum>A.sum+13*A.miss)return{w:'b'};
+  return{w:null};
+}
+const nm=(m,k)=>m[k].n.trim()||'Tim '+k.toUpperCase();
+const row=(x,k)=>`<div class="tr" data-t="${k}"><input data-f="n" maxlength="40" placeholder="Nama tim ${k.toUpperCase()}" value="${esc(x.n)}">
+<input data-f="0" type="number" min="0" max="13" inputmode="numeric" placeholder="-" value="${esc(x.s[0])}">
+<input data-f="1" type="number" min="0" max="13" inputmode="numeric" placeholder="-" value="${esc(x.s[1])}"><div class="tot" data-tot>0</div></div>`;
+function render(){
+  $('#ms').innerHTML=M.map((m,i)=>`<section class="card" data-i="${i}">
+<div class="mh"><b>Match ${i+1}</b><span class="st" data-st></span><button class="btn sm ghost" data-del>Hapus</button></div>
+<div class="hdr"><span>Tim</span><span style="text-align:center">Side 1</span><span style="text-align:center">Side 2</span><span style="text-align:center">Total</span></div>
+${row(m.a,'a')}${row(m.b,'b')}
+<label class="wl">Pemenang<select data-w><option value="">Otomatis</option><option value="a" ${m.w==='a'?'selected':''}>Tim atas</option><option value="b" ${m.w==='b'?'selected':''}>Tim bawah</option></select></label></section>`).join('')
+  ||'<p class="empty">Belum ada match. Klik "+ Match baru".</p>';
+  refresh();
+}
+function refresh(){
+  document.querySelectorAll('#ms .card').forEach(c=>{
+    const m=M[c.dataset.i],r=result(m);
+    ['a','b'].forEach(k=>{
+      const s=side(m[k]),tr=c.querySelector(`[data-t=${k}]`);
+      tr.querySelector('[data-tot]').textContent=s.sum;
+      tr.classList.toggle('win',r.w===k);
+      tr.querySelectorAll('input[type=number]').forEach((inp,j)=>inp.classList.toggle('bad',+inp.value>13));
+    });
+    const st=c.querySelector('[data-st]');
+    st.className='st'+(r.w&&r.w!=='draw'?' ok':'');
+    st.textContent=r.w==='draw'?'Seri':r.w?`Menang: ${nm(m,r.w)}${r.man?' (manual)':''}`:'Berlangsung';
+  });
+  rekap();
+}
+function rekap(){
+  const T={};
+  M.forEach(m=>{
+    const r=result(m);
+    ['a','b'].forEach(k=>{
+      const n=m[k].n.trim();if(!n)return;
+      const id=n.toLowerCase(),x=T[id]||(T[id]={n,p:0,w:0,l:0,pt:0});
+      x.p++;x.pt+=side(m[k]).sum;
+      if(r.w===k)x.w++;else if(r.w&&r.w!=='draw')x.l++;
+    });
+  });
+  const l=Object.values(T).sort((a,b)=>b.w-a.w||b.pt-a.pt||a.n.localeCompare(b.n));
+  $('#rk').innerHTML=l.map(x=>`<tr><td>${esc(x.n)}</td><td>${x.p}</td><td>${x.w}</td><td>${x.l}</td><td>${x.pt}</td></tr>`).join('');
+  $('#rke').hidden=l.length>0;
+}
+$('#ms').addEventListener('input',e=>{
+  const c=e.target.closest('.card[data-i]');if(!c)return;
+  const m=M[c.dataset.i],tr=e.target.closest('[data-t]'),f=e.target.dataset.f;
+  if(tr&&f){const x=m[tr.dataset.t];f==='n'?x.n=e.target.value:x.s[+f]=e.target.value}
+  else if(e.target.hasAttribute('data-w'))m.w=e.target.value;
+  save();refresh();
+});
+$('#ms').addEventListener('click',e=>{
+  if(!e.target.hasAttribute('data-del'))return;
+  const i=+e.target.closest('.card').dataset.i;
+  if(!confirm('Hapus Match '+(i+1)+'?'))return;
+  M.splice(i,1);save();render();
+});
+$('#add').onclick=()=>{M.push(blank());save();render();const c=document.querySelector('#ms .card:last-child input');c&&c.focus()};
+$('#clear').onclick=()=>{if(confirm('Kosongkan semua match?')){M=[blank()];save();render()}};
+$('#copy').onclick=async()=>{
+  const fmt=x=>{const v=x.s.map(N);return `${v[0]??''} + ${v[1]??''}`+(side(x).miss?'':` = ${side(x).sum}`)};
+  const txt=M.map(m=>{
+    const r=result(m),w=r.w==='draw'?' (seri)':r.w?` (win ${nm(m,r.w)})`:'';
+    return `${nm(m,'a')} ${fmt(m.a)}, ${nm(m,'b')} ${fmt(m.b)}${w}`;
+  }).join('\n');
+  try{await navigator.clipboard.writeText(txt);$('#saved').textContent='Hasil disalin'}
+  catch{prompt('Salin teks ini:',txt)}
+};
+render();
+</script></body></html>
