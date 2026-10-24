@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<title>Overlay Skor | Arvexis</title><meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&display=swap" rel="stylesheet">
+<style>
+/* Posisi (persen dari ukuran overlay.png). Buka /overlay?debug=1 untuk melihat kotaknya. */
+:root{
+  --nameA-x:19.5%; --nameA-y:2.4%; --nameA-w:17.5%; --nameA-h:7.2%;
+  --nameB-x:63.5%; --nameB-y:2.4%; --nameB-w:17.5%; --nameB-h:7.2%;
+  --score-x:43.6%; --score-y:8.2%; --score-w:13.2%; --score-h:3.9%;
+}
+html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden}
+#stage{position:fixed;inset:0;container-type:size;font-family:Cinzel,Georgia,serif;color:#fff}
+#frame{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
+.box{position:absolute;display:flex;align-items:center;justify-content:center;white-space:nowrap}
+.nameA{left:var(--nameA-x);top:var(--nameA-y);width:var(--nameA-w);height:var(--nameA-h)}
+.nameB{left:var(--nameB-x);top:var(--nameB-y);width:var(--nameB-w);height:var(--nameB-h)}
+.name{font-weight:800;font-size:2.6cqw;letter-spacing:.06em;text-transform:uppercase;text-shadow:0 2px 6px rgba(0,0,0,.75);line-height:1}
+.score{left:var(--score-x);top:var(--score-y);width:var(--score-w);height:var(--score-h);gap:1.4cqw}
+.num{font-weight:800;font-size:2.8cqw;line-height:1;min-width:3cqw;text-align:center;text-shadow:0 0 10px rgba(255,30,30,.8)}
+.num.win{color:#3ecf8e;text-shadow:0 0 10px rgba(62,207,142,.7)}
+.sep{font-size:2.2cqw;color:#ff3b3b}
+.pop{animation:pop .45s ease-out}
+@keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.5)}100%{transform:scale(1)}}
+body.debug .box{outline:1px dashed lime;background:rgba(0,255,0,.15)}
+</style></head><body>
+<div id="stage">
+  <img id="frame" src="/overlay.png" alt="">
+  <div class="box nameA"><span class="name" id="nA"></span></div>
+  <div class="box nameB"><span class="name" id="nB"></span></div>
+  <div class="box score"><span class="num" id="sA">0</span><span class="sep">:</span><span class="num" id="sB">0</span></div>
+</div>
+<script>
+const P=new URLSearchParams(location.search);
+if(P.has('debug'))document.body.classList.add('debug');
+const $=s=>document.querySelector(s);
+// logika sama dengan skor.html / hitung-point.html
+const N=v=>v===''||v==null||isNaN(+v)?null:Math.max(0,Math.min(13,Math.round(+v)));
+const side=x=>{const f=x.s.map(N).filter(v=>v!==null);return{sum:f.reduce((a,b)=>a+b,0),miss:2-f.length}};
+function result(m){
+  if(m.w==='a'||m.w==='b')return{w:m.w};
+  const A=side(m.a),B=side(m.b);
+  if(!A.miss&&!B.miss)return{w:A.sum===B.sum?'draw':A.sum>B.sum?'a':'b'};
+  if(A.sum>B.sum+13*B.miss)return{w:'a'};
+  if(B.sum>A.sum+13*A.miss)return{w:'b'};
+  return{w:null};
+}
+// ?m=3 -> paksa Match 3. Tanpa param: match pertama yang sedang berlangsung, kalau tidak ada pakai yang terakhir terisi.
+function pick(M){
+  const want=parseInt(P.get('m'),10);
+  if(want>=1&&M[want-1])return M[want-1];
+  const filled=M.filter(m=>m.a.n.trim()||m.b.n.trim());
+  return filled.find(m=>!result(m).w)||filled[filled.length-1]||M[M.length-1]||null;
+}
+const last={};
+function put(id,val,pop){
+  const el=$('#'+id);if(last[id]===val)return;
+  el.textContent=val;
+  if(pop&&last[id]!==undefined){el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop')}
+  last[id]=val;
+}
+function fit(el){
+  el.style.fontSize='';let s=parseFloat(getComputedStyle(el).fontSize);
+  while(el.scrollWidth>el.parentElement.clientWidth*.94&&s>8){s--;el.style.fontSize=s+'px'}
+}
+function render(m){
+  if(!m){put('nA','');put('nB','');put('sA','0');put('sB','0');return}
+  const r=result(m);
+  put('nA',m.a.n.trim()||'TIM A');put('nB',m.b.n.trim()||'TIM B');
+  put('sA',side(m.a).sum,true);put('sB',side(m.b).sum,true);
+  $('#sA').classList.toggle('win',r.w==='a');$('#sB').classList.toggle('win',r.w==='b');
+  fit($('#nA'));fit($('#nB'));
+}
+async function load(){
+  try{
+    const j=await (await fetch('/api/scores',{cache:'no-store'})).json();
+    if(Array.isArray(j.matches))render(pick(j.matches));
+  }catch{}
+}
+load();setInterval(load,3000);
+document.fonts&&document.fonts.ready.then(()=>{fit($('#nA'));fit($('#nB'))});
+</script></body></html>
