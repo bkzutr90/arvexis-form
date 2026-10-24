@@ -7,7 +7,8 @@
 :root{
   --nameA-x:19.5%; --nameA-y:2.4%; --nameA-w:17.5%; --nameA-h:7.2%;
   --nameB-x:63.5%; --nameB-y:2.4%; --nameB-w:17.5%; --nameB-h:7.2%;
-  --score-x:43.6%; --score-y:8.2%; --score-w:13.2%; --score-h:3.9%;
+  --scoreA-x:38.2%; --scoreA-y:3.2%; --scoreA-w:4.3%; --scoreA-h:6.4%;
+  --scoreB-x:57.5%; --scoreB-y:3.2%; --scoreB-w:4.3%; --scoreB-h:6.4%;
 }
 html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden}
 #stage{position:fixed;inset:0;container-type:size;font-family:Cinzel,Georgia,serif;color:#fff}
@@ -16,10 +17,10 @@ html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden
 .nameA{left:var(--nameA-x);top:var(--nameA-y);width:var(--nameA-w);height:var(--nameA-h)}
 .nameB{left:var(--nameB-x);top:var(--nameB-y);width:var(--nameB-w);height:var(--nameB-h)}
 .name{font-weight:800;font-size:2.6cqw;letter-spacing:.06em;text-transform:uppercase;text-shadow:0 2px 6px rgba(0,0,0,.75);line-height:1}
-.score{left:var(--score-x);top:var(--score-y);width:var(--score-w);height:var(--score-h);gap:1.4cqw}
-.num{font-weight:800;font-size:2.8cqw;line-height:1;min-width:3cqw;text-align:center;text-shadow:0 0 10px rgba(255,30,30,.8)}
+.scoreA{left:var(--scoreA-x);top:var(--scoreA-y);width:var(--scoreA-w);height:var(--scoreA-h)}
+.scoreB{left:var(--scoreB-x);top:var(--scoreB-y);width:var(--scoreB-w);height:var(--scoreB-h)}
+.num{font-weight:800;font-size:2.7cqw;line-height:1;text-align:center;text-shadow:0 0 10px rgba(255,30,30,.8)}
 .num.win{color:#3ecf8e;text-shadow:0 0 10px rgba(62,207,142,.7)}
-.sep{font-size:2.2cqw;color:#ff3b3b}
 .pop{animation:pop .45s ease-out}
 @keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.5)}100%{transform:scale(1)}}
 body.debug .box{outline:1px dashed lime;background:rgba(0,255,0,.15)}
@@ -28,7 +29,8 @@ body.debug .box{outline:1px dashed lime;background:rgba(0,255,0,.15)}
   <img id="frame" src="/overlay.png" alt="">
   <div class="box nameA"><span class="name" id="nA"></span></div>
   <div class="box nameB"><span class="name" id="nB"></span></div>
-  <div class="box score"><span class="num" id="sA">0</span><span class="sep">:</span><span class="num" id="sB">0</span></div>
+  <div class="box scoreA"><span class="num" id="sA">0</span></div>
+  <div class="box scoreB"><span class="num" id="sB">0</span></div>
 </div>
 <script>
 const P=new URLSearchParams(location.search);
@@ -69,7 +71,7 @@ function render(m){
   put('nA',m.a.n.trim()||'TIM A');put('nB',m.b.n.trim()||'TIM B');
   put('sA',side(m.a).sum,true);put('sB',side(m.b).sum,true);
   $('#sA').classList.toggle('win',r.w==='a');$('#sB').classList.toggle('win',r.w==='b');
-  fit($('#nA'));fit($('#nB'));
+  fit($('#nA'));fit($('#nB'));fit($('#sA'));fit($('#sB'));
 }
 async function load(){
   try{
@@ -78,5 +80,5 @@ async function load(){
   }catch{}
 }
 load();setInterval(load,3000);
-document.fonts&&document.fonts.ready.then(()=>{fit($('#nA'));fit($('#nB'))});
+document.fonts&&document.fonts.ready.then(()=>{fit($('#nA'));fit($('#nB'));fit($('#sA'));fit($('#sB'))});
 </script></body></html>
