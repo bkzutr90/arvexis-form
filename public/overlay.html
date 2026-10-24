@@ -5,18 +5,18 @@
 <style>
 /* Posisi (persen dari ukuran overlay.png). Buka /overlay?debug=1 untuk melihat kotaknya. */
 :root{
-  --nameA-x:19.5%; --nameA-y:2.4%; --nameA-w:17.5%; --nameA-h:7.2%;
-  --nameB-x:63.5%; --nameB-y:2.4%; --nameB-w:17.5%; --nameB-h:7.2%;
+  --nameA-x:22.6%; --nameA-y:2.9%; --nameA-w:12.9%; --nameA-h:6.4%;
+  --nameB-x:64.6%; --nameB-y:2.9%; --nameB-w:12.9%; --nameB-h:6.4%;
   --scoreA-x:38.2%; --scoreA-y:3.2%; --scoreA-w:4.3%; --scoreA-h:6.4%;
   --scoreB-x:57.5%; --scoreB-y:3.2%; --scoreB-w:4.3%; --scoreB-h:6.4%;
 }
 html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden}
 #stage{position:fixed;inset:0;container-type:size;font-family:Cinzel,Georgia,serif;color:#fff}
 #frame{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
-.box{position:absolute;display:flex;align-items:center;justify-content:center;white-space:nowrap}
+.box{position:absolute;overflow:hidden;display:flex;align-items:center;justify-content:center;white-space:nowrap}
 .nameA{left:var(--nameA-x);top:var(--nameA-y);width:var(--nameA-w);height:var(--nameA-h)}
 .nameB{left:var(--nameB-x);top:var(--nameB-y);width:var(--nameB-w);height:var(--nameB-h)}
-.name{font-weight:800;font-size:2.6cqw;letter-spacing:.06em;text-transform:uppercase;text-shadow:0 2px 6px rgba(0,0,0,.75);line-height:1}
+.name{font-weight:800;font-size:2.5cqw;letter-spacing:.04em;text-transform:uppercase;text-shadow:0 2px 6px rgba(0,0,0,.75);line-height:1}
 .scoreA{left:var(--scoreA-x);top:var(--scoreA-y);width:var(--scoreA-w);height:var(--scoreA-h)}
 .scoreB{left:var(--scoreB-x);top:var(--scoreB-y);width:var(--scoreB-w);height:var(--scoreB-h)}
 .num{font-weight:800;font-size:2.7cqw;line-height:1;text-align:center;text-shadow:0 0 10px rgba(255,30,30,.8)}
@@ -63,7 +63,7 @@ function put(id,val,pop){
 }
 function fit(el){
   el.style.fontSize='';let s=parseFloat(getComputedStyle(el).fontSize);
-  while(el.scrollWidth>el.parentElement.clientWidth*.94&&s>8){s--;el.style.fontSize=s+'px'}
+  while(el.scrollWidth>el.parentElement.clientWidth&&s>8){s--;el.style.fontSize=s+'px'}
 }
 function render(m){
   if(!m){put('nA','');put('nB','');put('sA','0');put('sB','0');return}
